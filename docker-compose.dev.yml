@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  # TimescaleDB for time-series machine/sensor data
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: shopsteward_timescale
+    environment:
+      POSTGRES_DB: shopsteward_timeseries
+      POSTGRES_USER: shopsteward
+      POSTGRES_PASSWORD: dev_password_change_in_prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./Database/init-timescale.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - shopsteward_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopsteward"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for metadata and configuration
+  postgres:
+    image: postgres:15-alpine
+    container_name: shopsteward_postgres
+    environment:
+      POSTGRES_DB: shopsteward_metadata
+      POSTGRES_USER: shopsteward
+      POSTGRES_PASSWORD: dev_password_change_in_prod
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Database/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - shopsteward_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopsteward"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and real-time data
+  redis:
+    image: redis:7-alpine
+    container_name: shopsteward_redis
+    command: redis-server --appendonly yes --requirepass dev_password_change_in_prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shopsteward_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # API Gateway (will be built from C# project)
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: shopsteward_api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__TimescaleDB=Host=timescaledb;Port=5432;Database=shopsteward_timeseries;Username=shopsteward;Password=dev_password_change_in_prod
+      - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=shopsteward_metadata;Username=shopsteward;Password=dev_password_change_in_prod
+      - ConnectionStrings__Redis=shopsteward_redis:6379,password=dev_password_change_in_prod
+      - CORS__AllowedOrigins=http://localhost:3000,http://localhost:8080
+    ports:
+      - "5000:80"
+      - "5001:443"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - shopsteward_network
+    volumes:
+      - ./Source:/app/Source
+    restart: unless-stopped
+
+  # Grafana for monitoring (optional but recommended)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: shopsteward_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./Monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+    depends_on:
+      - timescaledb
+      - postgres
+    networks:
+      - shopsteward_network
+    restart: unless-stopped
+
+  # Sample data generator (Python service)
+  data-generator:
+    build:
+      context: ./DataGenerator
+      dockerfile: Dockerfile
+    container_name: shopsteward_datagen
+    environment:
+      - API_ENDPOINT=http://api-gateway:80
+      - GENERATE_INTERVAL=1000
+    depends_on:
+      - api-gateway
+    networks:
+      - shopsteward_network
+    restart: unless-stopped
+
+volumes:
+  timescale_data:
+  postgres_data:
+  redis_data:
+  grafana_data:
+
+networks:
+  shopsteward_network:
+    driver: bridge

@@ -1,27 +1,31 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseUwp>true</UseUwp>
-    <DefaultLanguage>en-US</DefaultLanguage>
-    <PublishAot>true</PublishAot>
-    <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
-
-    <!--
-      This is a non-XAML library (just a simple WinRT component), so the XAML compiler is not needed.
-      Disabling the XAML compiler allows the target Windows SDK to be lower than 26100, if desired.
-      This property can be removed in case this project does have to include any XAML content.      
-    -->
-    <EnableXamlCompilerTargetsForUwpApps>false</EnableXamlCompilerTargetsForUwpApps>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <CsWinRTComponent>true</CsWinRTComponent>
-    <CsWinRTGenerateProjection>false</CsWinRTGenerateProjection>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ShopStewardHub.DigitalTwin</RootNamespace>
+    <AssemblyName>ShopStewardHub.DigitalTwin.API</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
+    <!-- ASP.NET Core -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+
+    <!-- Database -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Redis -->
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+
+    <!-- SignalR for WebSocket -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
+
+    <!-- JSON -->
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
   </ItemGroup>
 </Project>
