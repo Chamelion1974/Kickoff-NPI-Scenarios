@@ -1,0 +1,12 @@
+# FastAPI and server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# CORS middleware (already included in FastAPI)
+# For future: Database support
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# Optional: For better development experience
+python-dotenv==1.0.0
