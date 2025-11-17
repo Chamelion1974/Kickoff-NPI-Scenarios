@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: shopsteward-db
+    environment:
+      POSTGRES_DB: shopsteward
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shopsteward-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d shopsteward"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: shopsteward-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://admin:password@postgres:5432/shopsteward
+      PYTHONUNBUFFERED: 1
+    volumes:
+      # Mount the backend directory for hot-reload during development
+      - ./backend:/app
+    networks:
+      - shopsteward-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  shopsteward-network:
+    driver: bridge
